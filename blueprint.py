@@ -9,6 +9,14 @@ from lib.dspbptk.MD5 import *
 class blueprint(object):
     '''
     class to complete blueprint parsing and packing
+    TODO:
+        self.upgrade_building = upgrade a specific building to a new itemID
+        self.upgrade_assemblers = automatically upgrade all assemblers
+        self.upgrade_smelters = automatically upgrade all smelters
+        
+        self.update_recipe = upgrade specific building recipeID
+        self.update_assembler_recipes = upgrade all assemblers to new recipeID
+        self.update_smelter_recipeies = upgrade all smelters to new recipeID
     '''
     pprint = pp.PrettyPrinter(2)
     items = itemID()
