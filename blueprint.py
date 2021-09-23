@@ -4,6 +4,7 @@ from reader import *
 import pprint as pp
 from dspid import *
 from hashlib import md5
+from lib.dspbptk.MD5 import *
 
 
 class blueprint(object):
@@ -163,8 +164,7 @@ class blueprint(object):
         newstr = self.header_str
         newstr +='"' + self._encoded_recompress.decode('utf-8') + '"'
 
-        newhash = md5(newstr.encode('utf-8'))
-        newhash = newhash.digest().hex()
+        newhash = self._gen_md5f(newstr)
 
         finalstr = newstr + newhash
 
@@ -384,6 +384,34 @@ class blueprint(object):
         first += compactor.flush()
 
         return first
+
+    def _gen_md5f(self,bp_string:str)->str:
+        '''
+        Note: bp_string should be either FULL blueprint with hash, 
+        or a 'hashed' portion of the string - 
+            aka: from [BLUEPRINT..."] MINUS the last ".
+        '''
+        rindex=0
+        if bp_string.count('"') != 2:
+            if bp_string.count('"') != 1:
+                raise Exception('Blueprint String is not valid for hashing')
+            rindex = None
+        
+        if not bp_string.startswith('BLUEPRINT'):
+            raise Exception('Blueprint String is not valid for hashing')
+        
+        if rindex == 0:
+            index = bp_string.rindex('\"')
+        elif rindex == None:
+            index = None
+        
+        hashed_data = bp_string[:index] # type:ignore
+        
+        hash_value = DysonSphereMD5(DysonSphereMD5.Variant.MD5F). \
+            update(hashed_data.encode('utf-8')).hexdigest().upper()
+
+        return hash_value
+
 
 
     @property
