@@ -3,7 +3,6 @@ import zlib
 from reader import *
 import pprint as pp
 from dspid import *
-from hashlib import md5
 from lib.dspbptk.MD5 import *
 
 
@@ -58,6 +57,17 @@ class blueprint(object):
         return
 
     def parse_metadata(self)->None:
+        '''
+        This method pulls out the metadata info including reading from
+            the byte string for bp specific data.
+
+        After running the parsing, the method will set the 'meta_parsed'
+            to true, and self.metadata will be available.
+
+        Also includes error checking to make sure that all reader operations
+            are run in the correct stateful order (meta/area/building)
+        
+        '''
         if self.meta_parsed==True:
             print('Metadata has already been parsed. Reset to \
                     complete new parsing.')
@@ -80,6 +90,16 @@ class blueprint(object):
         
 
     def parse_areas(self)->None:
+        '''
+        This method parses all areas in the blueprint. It must be run 
+            after the parse_metadata.
+
+        The method will do error checking to make sure that the reader is
+            in the correct position to be parsing areas, and set the 
+            'self._areas_parsed' to true for tracking.
+
+        After running, the self._areas:list will be available and populated.
+        '''
         if self._meta_parsed == False:
             print('Metadata not parsed! Exiting...')
             return
@@ -106,6 +126,16 @@ class blueprint(object):
         return
 
     def parse_buildings(self):
+        '''
+        This method parses all buildings including parameters. It includes
+            error checking to make sure that the reader is in the correct
+            position to begin pulling buildings.
+
+        After running, the self._buildings_parsed will be set to True.
+
+        The self.buildings:list[building] will be available after running
+            and will be populated.
+        '''
         if self._meta_parsed != True or self._areas_parsed != True:
             print('Metadata or Areas not parsed. Exiting.')
             return
@@ -137,7 +167,19 @@ class blueprint(object):
 
         return
 
-    def building_compare(self,buildings:list[building]):
+    def building_compare(self,buildings:list[building])->dict:
+        '''
+        This method compares the data for a list of buildings.
+
+        Args: buildings:list[building]
+
+        NOTE: Do not run this method on the full 'self.buildings'
+            list or you will be inundated with prints!
+        
+        Recommend running with max of ~10 buildings, but do whatever
+            you'd like!
+
+        '''
         holder = dict.fromkeys(list(buildings[0].data.keys()))
         for key in holder:
             holder[key]=[]
@@ -148,7 +190,7 @@ class blueprint(object):
         
         return holder
 
-    def repack(self):
+    def repack(self)->str:
         '''
         This function call all necessary items to repack the blueprint
             in a DSP compatible form.
@@ -167,8 +209,9 @@ class blueprint(object):
         newhash = self._gen_md5f(newstr)
 
         finalstr = newstr + newhash
-
-        return finalstr
+        self.blueprint_string_new = finalstr
+        
+        return self.blueprint_string_new
         
 
 
@@ -219,6 +262,13 @@ class blueprint(object):
         return
 
     def _fmt_prep(self):
+        '''
+        This method sets a series of class variables with the order of byte
+            reads for various reader operations.
+
+        See _packBP for how these are used, and class binaryPacker 
+            and binaryReader for their 'read_list' methods.
+        '''
         self.fmt_metadata = [32,32,32,32,32,32,32]
         self.fmt_area = [8,8,16,16,16,16,16,16]
         self.fmt_building = [32,8,1,1,1,1,1,1,1,1,16,16,32,32,8,8,8,8,8,8,16,16]
@@ -230,6 +280,16 @@ class blueprint(object):
         return
 
     def _gen_metadata(self):
+        '''
+        Generates the metadata dict and populates it with the paintxt
+            values from the blueprint string.
+
+        After running, the self.metadata will be available, but may not be
+            populated fully depending on the self._metadata_parsed:bool status 
+        
+        self._metadata_reader_keys are those which must be filled in from the
+            compressed bytearray through the reader.
+        '''
         self.metadata= {
                         'icon_layout':int(self.header[1]),
                         'icon0':int(self.header[2]),
@@ -317,9 +377,16 @@ class blueprint(object):
                 - b64encode compressed bytes
             
             Step 4: MD5 hash
-                - TODO: Figure out MD5 hash
+                - Run the MD5F hasher (see self.repack())
 
             Step 5: Combine resulting string with header and update _bpdata_new
+        
+        This method functions on the following instance variables:
+
+            self._rawbytes_new:bytes = blueprint bytes after parsing
+            self._recompressed:bytes = blueprint after gzip
+            self._encoded_recompress:bytes = b64encoded bytes
+                NOTE: use .decode('utf-8') to get str version.
 
         '''
         
@@ -541,8 +608,11 @@ if __name__=='__main__':
     # for bd in bp.buildings:
     #     bp.pprint.pprint(bd.info)
 
+    print('\nBuilding Type Stats: ')
     blueprint.pprint.pprint(bp.building_stats)
+    print('\nBuilding Recipe Stats: ')
     blueprint.pprint.pprint(bp.recipe_stats)
+    print('\nParamater Stats for Buildings:')
     blueprint.pprint.pprint(bp.param_stats)
 
     print()
